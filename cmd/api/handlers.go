@@ -85,7 +85,6 @@ func (app *Config) logItem(w http.ResponseWriter, entry LogPayload) {
 	payload.Message = "logged"
 
 	app.writeJSON(w, http.StatusAccepted, payload)
-	app.writeJSON(w, http.StatusOK, payload)
 
 }
 

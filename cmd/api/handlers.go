@@ -103,7 +103,7 @@ func (app *Config) logItem(w http.ResponseWriter, entry LogPayload) {
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusAccepted {
+	if response.StatusCode != http.StatusOK {
 		app.errorJSON(w, err)
 		return
 	}
@@ -112,7 +112,7 @@ func (app *Config) logItem(w http.ResponseWriter, entry LogPayload) {
 	payload.Error = false
 	payload.Message = "logged"
 
-	app.writeJSON(w, http.StatusAccepted, payload)
+	app.writeJSON(w, http.StatusOK, payload)
 
 }
 
@@ -138,9 +138,9 @@ func (app *Config) authenticate(w http.ResponseWriter, a AuthPayload) {
 
 	// make sure we get back the correct status code
 	if response.StatusCode == http.StatusUnauthorized {
-		app.errorJSON(w, errors.New("invalid credentials"))
+		app.errorJSON(w, errors.New("invalid credentials"), http.StatusUnauthorized)
 		return
-	} else if response.StatusCode != http.StatusAccepted {
+	} else if response.StatusCode != http.StatusOK {
 		app.errorJSON(w, errors.New("error calling auth service"))
 		return
 	}
@@ -165,7 +165,7 @@ func (app *Config) authenticate(w http.ResponseWriter, a AuthPayload) {
 	payload.Message = "Authenticated!"
 	payload.Data = jsonFromService.Data
 
-	app.writeJSON(w, http.StatusAccepted, payload)
+	app.writeJSON(w, http.StatusOK, payload)
 }
 
 // sendMail sends email by calling the mail microservice
@@ -193,7 +193,7 @@ func (app *Config) sendMail(w http.ResponseWriter, msg MailPayload) {
 	defer response.Body.Close()
 
 	// make sure we get back the right status code
-	if response.StatusCode != http.StatusAccepted {
+	if response.StatusCode != http.StatusOK {
 		app.errorJSON(w, errors.New("error calling mail service"))
 		return
 	}
@@ -203,13 +203,13 @@ func (app *Config) sendMail(w http.ResponseWriter, msg MailPayload) {
 	payload.Error = false
 	payload.Message = "Message sent to " + msg.To
 
-	app.writeJSON(w, http.StatusAccepted, payload)
+	app.writeJSON(w, http.StatusOK, payload)
 
 }
 
 // logEventViaRabbit logs an event using the logger-service. It makes the call by pushing the data to RabbitMQ.
 func (app *Config) logEventViaRabbit(w http.ResponseWriter, l LogPayload) {
-	err := app.pushToQueue(l.Name, l.Data)
+	err := app.pushToQueue(l.Name, l.Data, "log.INFO")
 	if err != nil {
 		app.errorJSON(w, err)
 		return
@@ -219,11 +219,11 @@ func (app *Config) logEventViaRabbit(w http.ResponseWriter, l LogPayload) {
 	payload.Error = false
 	payload.Message = "logged via RabbitMQ"
 
-	app.writeJSON(w, http.StatusAccepted, payload)
+	app.writeJSON(w, http.StatusOK, payload)
 }
 
 // pushToQueue pushes a message into RabbitMQ
-func (app *Config) pushToQueue(name, msg string) error {
+func (app *Config) pushToQueue(name, msg, severity string) error {
 	emitter, err := event.NewEventEmitter(app.Rabbit)
 	if err != nil {
 		return err
@@ -239,7 +239,7 @@ func (app *Config) pushToQueue(name, msg string) error {
 		return err
 	}
 
-	err = emitter.Push(string(j), "log.INFO")
+	err = emitter.Push(string(j), severity)
 	if err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func (app *Config) logItemViaRPC(w http.ResponseWriter, l LogPayload) {
 		Message: result,
 	}
 
-	app.writeJSON(w, http.StatusAccepted, payload)
+	app.writeJSON(w, http.StatusOK, payload)
 }
 
 func (app *Config) LogViaGRPC(w http.ResponseWriter, r *http.Request) {
@@ -314,5 +314,5 @@ func (app *Config) LogViaGRPC(w http.ResponseWriter, r *http.Request) {
 	payload.Error = false
 	payload.Message = result.Result
 
-	app.writeJSON(w, http.StatusAccepted, payload)
+	app.writeJSON(w, http.StatusOK, payload)
 }

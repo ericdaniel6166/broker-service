@@ -68,6 +68,10 @@ func (app *Config) HandleSubmission(w http.ResponseWriter, r *http.Request) {
 	case "auth":
 		app.authenticate(w, requestPayload.Auth)
 	case "log":
+		app.logItem(w, requestPayload.Log)
+	case "log-via-rabbitmq":
+		app.logEventViaRabbit(w, requestPayload.Log)
+	case "log-rpc":
 		app.logItemViaRPC(w, requestPayload.Log)
 	case "mail":
 		app.sendMail(w, requestPayload.Mail)
@@ -295,7 +299,7 @@ func (app *Config) LogViaGRPC(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	_, err = c.WriteLog(ctx, &logs.LogRequest{
+	result, err := c.WriteLog(ctx, &logs.LogRequest{
 		LogEntry: &logs.Log{
 			Name: requestPayload.Log.Name,
 			Data: requestPayload.Log.Data,
@@ -308,7 +312,7 @@ func (app *Config) LogViaGRPC(w http.ResponseWriter, r *http.Request) {
 
 	var payload jsonResponse
 	payload.Error = false
-	payload.Message = "logged"
+	payload.Message = result.Result
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }

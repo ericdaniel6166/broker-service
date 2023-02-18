@@ -1,9 +1,10 @@
 package event
 
 import (
-	"log"
-
+	"context"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"log"
+	"time"
 )
 
 type Emitter struct {
@@ -28,17 +29,13 @@ func (e *Emitter) Push(event string, severity string) error {
 	defer channel.Close()
 
 	log.Println("Pushing to channel")
-
-	err = channel.Publish(
-		"logs_topic",
-		severity,
-		false,
-		false,
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	err = channel.PublishWithContext(ctx, "logs_topic", severity, false, false,
 		amqp.Publishing{
 			ContentType: "text/plain",
 			Body:        []byte(event),
-		},
-	)
+		})
 	if err != nil {
 		return err
 	}
